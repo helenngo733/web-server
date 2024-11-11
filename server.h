@@ -1,21 +1,19 @@
-#ifndef HTTP_MSG_H
-#define HTTP_MSG_H
-
-typedef struct message {
-    char *method;
-    char *path;
-    char *http_version;
-    char *headers;
-    char *body;
-    int body_length;
-} http_client_message_t;
+#ifndef SERVER_H
+#define SERVER_H
 
 typedef enum { BAD_REQUEST, CLOSED_CONNECTION, MESSAGE } http_read_result_t;
 
-// responses: a message, bad request, closed connection
-// allocates and returns a message
-void read_http_client_message(int client_sock, http_client_message_t **message,
-                              http_read_result_t *result);
-void free_http_client_message(http_client_message_t *message);
+typedef struct {
+    int request_count;
+    int received_bytes;
+    int sent_bytes;
+} stats_t;
+
+extern stats_t server_stats;
+
+int handle_static(int sock_fd, const char *file_path);
+int handle_stats(int sock_fd);
+int handle_calc(int sock_fd, const char *query);
+void *handle_connection(void *sock_fd_ptr);
 
 #endif
