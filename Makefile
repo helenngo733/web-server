@@ -1,5 +1,8 @@
-main: main.c http_msg.c
-	gcc -o main main.c http_msg.c
+main: main.c server.c
+	gcc -o main main.c server.c
 
 clean:
 	rm main
+
+test: main 
+	bash test.sh
