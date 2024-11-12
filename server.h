@@ -11,9 +11,9 @@ typedef struct {
 
 extern stats_t server_stats;
 
-int handle_static(int sock_fd, const char *file_path);
-int handle_stats(int sock_fd);
-int handle_calc(int sock_fd, const char *query);
+void handle_static(int sock_fd, const char *file_path);
+void handle_stats(int sock_fd);
+void handle_calc(int sock_fd, const char *query);
 void *handle_connection(void *sock_fd_ptr);
 
 #endif

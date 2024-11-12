@@ -13,7 +13,9 @@
 
 stats_t server_stats = {0, 0, 0};
 
-int handle_static(int sock_fd, const char *file_path) {
+// allows the requester to specify the name of a file in a "/static" directory.
+// Ex: "/static/images/rex.png", returns the binary file that is there accessible to server.
+void handle_static(int sock_fd, const char *file_path) {
     char full_path[256];
     snprintf(full_path, sizeof(full_path), "./static%s", file_path + 7);  // Skip "/static"
 
@@ -21,14 +23,16 @@ int handle_static(int sock_fd, const char *file_path) {
     if (!file) {
         const char *not_found = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n";
         write(sock_fd, not_found, strlen(not_found));
-        return -1;
+        return;
     }
 
+    // Get file size
     struct stat file_stat;
     stat(full_path, &file_stat);
     int file_size = file_stat.st_size;
     server_stats.sent_bytes += file_size;
 
+    // Send HTTP header
     char header[128];
     snprintf(header, sizeof(header),
              "HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: "
@@ -36,48 +40,66 @@ int handle_static(int sock_fd, const char *file_path) {
              file_size);
     write(sock_fd, header, strlen(header));
 
+    // Send file contents
     char buffer[1024];
     int bytes_read;
     while ((bytes_read = fread(buffer, 1, sizeof(buffer), file)) > 0) {
         write(sock_fd, buffer, bytes_read);
     }
+
+    write(sock_fd, "\n", 1);
+
     fclose(file);
-    return 0;
 }
 
-int handle_stats(int sock_fd) {
-    char response[256];
+// returns a properly formatted HTML doc that lists the number of requests received so far,
+// and the total of received bytes and sent bytes
+void handle_stats(int sock_fd) {
+    char content[1024];
+    int content_length = snprintf(content, sizeof(content),
+                                  "<html><body><h1>Server Stats</h1>"
+                                  "<p>Requests: %d</p>"
+                                  "<p>Received bytes: %d</p>"
+                                  "<p>Sent bytes: %d</p>"
+                                  "</body></html>",
+                                  server_stats.request_count, server_stats.received_bytes,
+                                  server_stats.sent_bytes);
+
+    char response[2048];
     snprintf(response, sizeof(response),
-             "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: %ld\r\n\r\n"
-             "<html><body><h1>Server Stats</h1>"
-             "<p>Requests: %d</p>"
-             "<p>Received bytes: %d</p>"
-             "<p>Sent bytes: %d</p>"
-             "</body></html>",
-             strlen(response), server_stats.request_count, server_stats.received_bytes,
-             server_stats.sent_bytes);
+             "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: %d\r\n\r\n%s",
+             content_length, content);
 
     write(sock_fd, response, strlen(response));
-    return 0;
+    write(sock_fd, "\n", 1);
 }
 
-int handle_calc(int sock_fd, const char *query) {
+// returns text or HTML, summing the value of two query params in the request named "a" and "b"
+// (both numeric).
+void handle_calc(int sock_fd, const char *query) {
     int a, b;
     if (sscanf(query, "a=%d&b=%d", &a, &b) != 2) {
         const char *bad_request = "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n\r\n";
         write(sock_fd, bad_request, strlen(bad_request));
-        return -1;
+        return;
     }
 
-    char response[128];
     int result = a + b;
+
+    char content[1024];
+    int content_length = snprintf(content, sizeof(content),
+                                  "<html><body><h1>Calculation Results</h1>"
+                                  "<p>Sum: %d + %d = %d</p>"
+                                  "</body></html>",
+                                  a, b, result);
+
+    char response[2048];
     snprintf(response, sizeof(response),
-             "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %ld\r\n\r\n"
-             "Sum: %d",
-             strlen(response), result);
+             "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: %d\r\n\r\n%s",
+             content_length, content);
 
     write(sock_fd, response, strlen(response));
-    return 0;
+    write(sock_fd, "\n", 1);
 }
 
 void *handle_connection(void *sock_fd_ptr) {
@@ -92,9 +114,11 @@ void *handle_connection(void *sock_fd_ptr) {
         close(sock_fd);
         return NULL;
     }
+
     server_stats.request_count++;
     server_stats.received_bytes += bytes_read;
 
+    // Parse HTTP request
     char method[8], path[256];
     sscanf(buffer, "%s %s", method, path);
 
