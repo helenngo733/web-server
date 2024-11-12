@@ -1,0 +1,44 @@
+// Static 
+
+GET /static/images/gudetama.png HTTP/1.1
+-------------------
+HTTP/1.1 200 OK
+Content-Type: application/octet-stream
+Content-Length: 95859
+
+�PNG ... //should return binary stuff 
+
+
+
+GET /static/docs/sample.txt HTTP/1.1
+-------------------
+HTTP/1.1 200 OK
+Content-Type: application/octet-stream
+Content-Length: 30
+
+Hi! This is a sample text file
+Connection closed by foreign host.
+
+
+// Stats 
+
+GET /stats HTTP/1.1
+-------------------
+HTTP/1.1 200 OK
+Content-Type: text/html
+Content-Length: 110
+
+<html><body><h1>Server Stats</h1><p>Requests: 1</p><p>Received bytes: 21</p><p>Sent bytes: 0</p></body></html>
+Connection closed by foreign host.
+
+
+// Calc
+
+GET /calc?a=5&b=7 HTTP/1.1
+-------------------
+HTTP/1.1 200 OK
+Content-Type: text/html
+Content-Length: 76
+
+<html><body><h1>Calculation Results</h1><p>Sum: 5 + 7 = 12</p></body></html>
+Connection closed by foreign host.
